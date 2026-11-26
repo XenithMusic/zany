@@ -1,0 +1,38 @@
+[package]
+name = "bash"
+version = "5.3.20"
+about = "The GNU Borne Again shell."
+license = "GPL-3.0-or-later"
+
+[validation]
+checksum = "df8101a80560fde0185b3f5f5a234857"
+size = 2001850
+
+[signing]
+signed = "PUBLIC KEY" // this is the checksum signed by the private key. if the integrity check fails, this is not checked. if the integrity check passes, but this fails, the package is unsafe and will not be installed.
+
+[relationships]
+provides = [
+    "/usr/bin/sh",
+    "/usr/bin/bash"
+]
+expects = [] // bash has none, but this would be a list of paths that this package wants present
+depends = [
+    "zanylib:glibc",
+    "zanylib:ncurses",
+    "zanylib:readline"
+]
+recommends = [
+    "zanylib:bashcompletion"
+]
+
+[hooks]
+remove.early = "remove.early.sh" // most hooks will be shell scripts
+remove = "remove.cmd" // .cmd is a non-standard extension, but it's used here to represent a single command that should be run under the current shell. it should ONLY ever use POSIX Shell, so it is compatible with other shells.
+remove.late = "remove.lua" // in the case that there are no shell scripts available, unsandboxed lua can be used instead! installing shells is quite possibly the ONLY case where using lua is valid.
+install.early = "install.early.lua"
+install = "install.lua"
+install.late = "install.late.sh"
+revert.install.late = "revert.install.late.sh"
+revert.install = "revert.install.lua"
+revert.install.early = "revert.install.early.sh"

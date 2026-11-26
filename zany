@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+import argparse,random,sys,whermst,applier
+from const import *
+
+problems:list[Exception] = []
+
+random.shuffle(MOTDS)
+
+class CustomHelp(argparse._HelpAction):
+    def __init__(self, option_strings, dest = "==SUPPRESS==", default = "==SUPPRESS==", help = None):
+        super().__init__(option_strings, dest, default, help)
+    def __call__(self, parser, namespace, values, option_string = None):
+        print(parser.help)
+
+ap = argparse.ArgumentParser("zany",description="A quirky package manager made entirely from scratch. Including the repos.",add_help=False,prefix_chars="/")
+ap.help = """
+usage: zany [OPTIONS ...]
+usage: zany ACTIONS ... [OPTIONS ...]
+
+A quirky package manager made entirely from scratch.
+
+actions summary:
+    +PKGNAME    installs the package and exits
+    -PKGNAME    uninstalls the package and exits
+    ^PKGNAME    updates the package and exits
+    ^           updates all packages and exits
+    +#REPONAME  adds a repository and exits
+    -#REPONAME  removes a repository and exits
+    #           shows the configured repos
+    ?PKGNAME    searches for a package in the repos
+
+options:
+    /version        show version and exit
+    /help           show this info and exit
+                    this also accepts --help, but it is not
+                    recommended, as it is more ambiguous.
+    /list           list all installed packages
+    /q, /quiet      don't print for anything other than errors.
+    /qq             don't print for anything at all.
+    /y, /yes        automatically answer yes to all non-
+                    -destructive actions.
+    /yy             automatically answer yes to all actions.
+    /n, /no         automatically answer no to all actions.
+    /d, /default    automatically answer default to all actions.
+    /no-resolve     don't automatically resolve dependencies
+    /resolve        automatically resolve dependencies
+
+See `man zany` for more details on how to configure and use zany.
+"""[1:-1]
+ap.add_argument("actions",nargs="*")
+ap.add_argument("/version",action="version",version=VERSION)
+ap.add_argument("/help",action=CustomHelp)
+ap.add_argument("/list",action="store_true",default=False)
+ap.add_argument("/q","/quiet",action="count",default=0)
+ap.add_argument("/y","/yes",action="count",default=0)
+argv = sys.argv
+argv = ["/help" if x == "--help" else x for x in argv]
+args = ap.parse_args(argv)
+
+acttypes = [
+    "-#","+#","-","+","^"
+]
+
+currentState = whermst.getState()
+if "^" in args.actions:
+    args.actions.extend([f"^{x[0]}:{x[1]}" for x in currentState["packages"]])
+
+actions = {k:[] for k in acttypes}
+
+for i in args.actions:
+    applicable = [k for k in acttypes if i.startswith(k)]
+    applicable.sort(key=(lambda x : -len(x)))
+    for k in applicable:
+        actions[k] += [i[len(k):]]
+        break
+
+collapsed = []
+for k,v in actions.items():
+    collapsed.extend([[k,x] for x in v])
+
+try:
+    for i in collapsed:
+        action = i[0]
+        value = i[1]
+        match action:
+            case "-#":
+                print("remove",value)
+                applier.remove_repo(value)
+            case "+#":
+                print("add",value)
+                applier.add_repo(value)
+            case "-":
+                print("uninstall",value)
+                applier.uninstall_pkg(value)
+            case "+":
+                print("install",value)
+                applier.install_pkg(value)
+            case "^":
+                print("update",value)
+                applier.update_pkg(value)
+except Exception as e:
+    print("critical error while performing operations! it will be thrown on exit.")
+    problems.append(e)
+
+print("take a message before you go!")
+print(f"   {MOTDS[0]}")
+
+if len(problems) > 0:
+    print("")
+    raise ExceptionGroup("problems!",problems)

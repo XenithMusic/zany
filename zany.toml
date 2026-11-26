@@ -1,0 +1,8 @@
+[repo]
+name = "zanylib"
+mangle = "lib%"
+pkgs = "./pkgs"
+
+[signing]
+public = "PUBLIC KEY"
+perpack = true
